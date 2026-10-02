@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bloom Notes 🌸</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root{--p:#8e6bd0;--p2:#b9a2ea;--bg:#f6f0ff;--c:#fff;--t:#3d2f5c;--s:#8e6bd033}
+@media(prefers-color-scheme:dark){:root{--bg:#1e1830;--c:#2b2342;--t:#efe8ff;--s:#0006}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:Georgia,'Trebuchet MS',serif;background:var(--bg);color:var(--t)}
+#app{max-width:900px;margin:auto;padding:14px 14px 100px;min-height:100vh;animation:in .4s}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+@keyframes fl{50%{transform:translateY(-8px) rotate(8deg)}}
+@keyframes pu{50%{opacity:.4}}
+h1{color:var(--p);margin:6px 0 12px}
+.fw{display:inline-block;animation:fl 5s infinite;opacity:.7}
+input,textarea,select{font:inherit;color:inherit;background:var(--c);border:2px solid var(--s);border-radius:16px;padding:12px 14px;width:100%;outline:0}
+input:focus,textarea:focus{border-color:var(--p2)}
+button{font:inherit;border:0;border-radius:16px;padding:11px 15px;background:var(--c);color:var(--p);font-weight:bold;box-shadow:0 2px 6px var(--s);transition:.15s}
+button:active{transform:scale(.94)}
+button.pr{background:var(--p);color:#fff}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:12px}
+.card{background:var(--c);border-radius:22px;padding:16px;box-shadow:0 3px 10px var(--s);animation:in .4s;position:relative}
+.card b{font-size:18px}.card p{margin:6px 0;opacity:.8;font-size:14px;word-break:break-word}
+.card small{opacity:.6}.chip{background:var(--s);border-radius:12px;padding:2px 9px;font-size:12px}
+.tab.on{background:var(--p);color:#fff}
+.fab{position:fixed;right:20px;bottom:24px;border-radius:30px;padding:16px 22px;background:var(--p);color:#fff;font-size:18px;box-shadow:0 5px 16px #8e6bd088}
+#b{min-height:50vh;resize:vertical;font-size:17px;line-height:1.6}
+#t{font-size:24px;font-weight:bold}
+.imgs{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.imgs div{position:relative}.imgs img{height:130px;border-radius:14px;max-width:100%}
+.imgs button{position:absolute;top:4px;right:4px;padding:2px 8px}
+.rec{color:#e0457b;animation:pu 1s infinite}
+.av{display:inline-block;width:28px;height:28px;border-radius:50%;background:var(--p);color:#fff;text-align:center;line-height:28px;font-size:13px;margin-right:3px}
+.empty{text-align:center;margin-top:60px;font-size:19px}
+</style></head><body>
+<div id="app">Loading 🌸...</div>
+<script>
+const U='https://ftmqowjxheqoxturomwg.supabase.co',K='sb_publishable_Ovdkk30-Wyw6Tp6x3w99oA_zbb1GM35';
+const sb=supabase.createClient(U,K);
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=x=>new Date(x).toLocaleString([],{dateStyle:'medium',timeStyle:'short'});
+let me,notes=[],perm={},cur=null,view='all',folder='',q='',sort='u',saveT,st='',ch,rec=null;
+const app=$('#app'),note=()=>notes.find(n=>n.id==cur),canEdit=n=>n&&(n.owner==me.id||perm[n.id]);
+
+async function boot(){
+ const{data}=await sb.auth.getSession();me=data.session?.user;
+ if(me){const j=new URLSearchParams(location.search).get('join');
+  if(j){await sb.rpc('join_note',{t:j});history.replaceState({},'',location.pathname)}
+  await load();feed()}
+ render()}
+async function load(){
+ const a=await sb.from('notes').select('*').order('updated_at',{ascending:false});notes=a.data||[];
+ const c=await sb.from('collaborators').select('*').eq('user_id',me.id);perm={};(c.data||[]).forEach(x=>perm[x.note_id]=x.can_edit)}
+function feed(){sb.channel('feed').on('postgres_changes',{event:'*',schema:'public',table:'notes'},p=>{
+ if(p.eventType=='DELETE'){notes=notes.filter(n=>n.id!=p.old.id)}
+ else{const i=notes.findIndex(n=>n.id==p.new.id);i<0?notes.push(p.new):notes[i]=p.new;
+  if(cur==p.new.id&&$('#b')&&st!='Saving…'){const b=$('#b'),pos=b.selectionStart;
+   if(b.value!=p.new.body){b.value=p.new.body;try{b.setSelectionRange(pos,pos)}catch(e){}}
+   if($('#t').value!=p.new.title)$('#t').value=p.new.title;imgs()}}
+ if(!cur)list()}).subscribe()}
+
+function render(){
+ if(!me){app.innerHTML=`<div style="text-align:center;margin-top:8vh"><span class="fw" style="font-size:60px">🌸</span><h1>Bloom Notes</h1><p>Your cozy purple notebook ✿</p>
+ <div style="max-width:340px;margin:auto"><input id="em" type="email" placeholder="Email"><div style="height:8px"></div><input id="pw" type="password" placeholder="Password (6+ characters)">
+ <div class="row" style="justify-content:center"><button class="pr" onclick="auth(0)">Sign in</button><button onclick="auth(1)">Create account</button></div><p id="msg"></p></div></div>`;return}
+ if(cur){editor();return}
+ app.innerHTML=`<div class="row" style="justify-content:space-between"><h1><span class="fw">🌸</span> Bloom Notes</h1><button onclick="sb.auth.signOut().then(()=>location.reload())">Sign out</button></div>
+ <input placeholder="🔍 Search notes, folders..." value="${esc(q)}" oninput="q=this.value.toLowerCase();list()">
+ <div class="row">${[['all','📒 All'],['pin','📌 Pinned'],['trash','🗑 Trash']].map(a=>`<button class="tab ${view==a[0]?'on':''}" onclick="view='${a[0]}';render()">${a[1]}</button>`).join('')}</div>
+ <div class="row"><select style="width:auto" onchange="folder=this.value;list()"><option value="">📂 All folders</option>${[...new Set(notes.map(n=>n.folder).filter(Boolean))].map(f=>`<option ${f==folder?'selected':''}>${esc(f)}</option>`).join('')}</select>
+ <select style="width:auto" onchange="sort=this.value;list()"><option value="u" ${sort=='u'?'selected':''}>Recently edited</option><option value="c" ${sort=='c'?'selected':''}>Created date</option><option value="p" ${sort=='p'?'selected':''}>Pinned first</option></select></div>
+ <div class="grid" id="lst"></div><button class="fab" onclick="add()">🌸 + New Note</button>`;list()}
+function list(){
+ let r=notes.filter(n=>view=='trash'?n.deleted:!n.deleted);
+ if(view=='pin')r=r.filter(n=>n.pinned);if(folder)r=r.filter(n=>n.folder==folder);
+ if(q)r=r.filter(n=>(n.title+n.body+n.folder).toLowerCase().includes(q));
+ r.sort((a,b)=>sort=='c'?b.created_at.localeCompare(a.created_at):sort=='p'?(b.pinned-a.pinned)||b.updated_at.localeCompare(a.updated_at):b.updated_at.localeCompare(a.updated_at));
+ $('#lst').innerHTML=r.length?r.map(n=>`<div class="card" onclick="open_('${n.id}')">${n.pinned?'<span style="float:right">📌</span>':''}<b>${esc(n.title)||'Untitled'}</b>${n.owner!=me.id?' 🤝':''}<p>${esc(n.body.slice(0,90))}</p><small>${fmt(n.updated_at)}</small> ${n.folder?`<span class="chip">✿ ${esc(n.folder)}</span>`:''}
+ ${n.deleted?`<div class="row"><button onclick="event.stopPropagation();restore('${n.id}')">♻ Restore</button><button onclick="event.stopPropagation();purge('${n.id}')">Delete forever</button></div>`:''}</div>`).join(''):`<div class="empty" style="grid-column:1/-1"><span class="fw">🌸</span> ✿<br>No notes yet 🌸<br>Let's create something beautiful.</div>`}
+
+async function auth(sign){const e=$('#em').value,p=$('#pw').value;
+ const r=sign?await sb.auth.signUp({email:e,password:p}):await sb.auth.signInWithPassword({email:e,password:p});
+ if(r.error)return $('#msg').textContent=r.error.message;
+ if(sign&&!r.data.session)return $('#msg').textContent='Check your email to confirm, then sign in 💜';
+ location.reload()}
+async function add(){const{data,error}=await sb.from('notes').insert({}).select().single();if(error)return alert(error.message);notes.push(data);open_(data.id)}
+function open_(id){const n=notes.find(x=>x.id==id);if(n.deleted)return;cur=id;render();presence()}
+function presence(){ch=sb.channel('note-'+cur,{config:{presence:{key:me.id}}});
+ ch.on('presence',{event:'sync'},()=>{const u=Object.values(ch.presenceState()).flat();const el=$('#pres');if(el)el.innerHTML=u.map(x=>`<span class="av" title="${esc(x.e)}">${esc(x.e[0].toUpperCase())}</span>`).join('')+(u.length>1?'online':'')})
+ .subscribe(s=>{if(s=='SUBSCRIBED')ch.track({e:me.email})})}
+function editor(){const n=note(),ed=canEdit(n),ro=ed?'':'readonly';
+ app.innerHTML=`<div class="row"><button onclick="close_()">← Back</button><span id="pres"></span><span id="st" style="margin-left:auto;opacity:.7"></span></div>
+ <input id="t" ${ro} placeholder="Title ✿" value="${esc(n.title)}" oninput="chg()">
+ <div class="row"><input id="f" ${ro} list="fl" placeholder="📂 Folder (e.g. College)" value="${esc(n.folder)}" oninput="chg()" style="flex:1;min-width:150px"><datalist id="fl">${[...new Set(notes.map(x=>x.folder).filter(Boolean))].map(f=>`<option>${esc(f)}`).join('')}</datalist>
+ ${ed?`<button id="mic" onclick="mic()">🎤</button><button onclick="$('#fi').click()">🖼</button><input id="fi" type="file" accept="image/*" multiple hidden onchange="upl(this.files)">`:''}
+ <button onclick="pin()">${n.pinned?'📌':'📍'}</button>${n.owner==me.id?`<button onclick="share()">🤝 Share</button><button onclick="trash()">🗑</button>`:''}</div>
+ <textarea id="b" ${ro} placeholder="Write something beautiful..." oninput="chg()">${esc(n.body)}</textarea>
+ ${ed?'':'<p>👀 View only</p>'}<div class="imgs" id="im"></div>`;imgs();
+ const b=$('#b');b.ondragover=e=>e.preventDefault();b.ondrop=e=>{e.preventDefault();if(ed)upl(e.dataTransfer.files)}}
+function stat(){const e=$('#st');if(e)e.textContent=st}
+function chg(){const n=note();if(!canEdit(n))return;n.title=$('#t').value;n.body=$('#b').value;n.folder=$('#f').value.trim();st='Saving…';stat();
+ clearTimeout(saveT);saveT=setTimeout(()=>push({title:n.title,body:n.body,folder:n.folder}),600)}
+async function push(o){const{error}=await sb.from('notes').update({...o,updated_at:new Date().toISOString()}).eq('id',cur);st=error?'⚠ Not saved':'Saved ✓ '+new Date().toLocaleTimeString([],{timeStyle:'short'});stat()}
+async function close_(){if(rec)rec.stop();clearTimeout(saveT);if(st=='Saving…'){const n=note();await push({title:n.title,body:n.body,folder:n.folder})}
+ if(ch)sb.removeChannel(ch);cur=null;st='';render()}
+async function pin(){const n=note();n.pinned=!n.pinned;await push({pinned:n.pinned});editor()}
+async function trash(){if(!confirm('Move to trash? 🥺'))return;await push({deleted:true});note().deleted=true;close_()}
+async function restore(id){await sb.from('notes').update({deleted:false}).eq('id',id);notes.find(n=>n.id==id).deleted=false;list()}
+async function purge(id){if(confirm('Delete forever?')){await sb.from('notes').delete().eq('id',id);notes=notes.filter(n=>n.id!=id);list()}}
+function imgs(){const n=note(),el=$('#im');if(!el)return;el.innerHTML=(n.images||[]).map((u,i)=>`<div><img src="${esc(u)}">${canEdit(n)?`<button onclick="rmImg(${i})">✕</button>`:''}</div>`).join('')}
+async function upl(files){const n=note();st='Uploading…';stat();
+ for(const f of files){const path=me.id+'/'+crypto.randomUUID()+'-'+f.name.replace(/[^\w.]/g,'_');
+  const{error}=await sb.storage.from('note-images').upload(path,f);if(error){alert(error.message);continue}
+  n.images=[...(n.images||[]),sb.storage.from('note-images').getPublicUrl(path).data.publicUrl]}
+ await push({images:n.images});imgs()}
+async function rmImg(i){const n=note();n.images.splice(i,1);await push({images:n.images});imgs()}
+function mic(){const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!R)return alert('Voice typing isn\'t available in this browser 💜 Try Chrome.');
+ if(rec){rec.stop();return}
+ rec=new R();rec.continuous=true;rec.interimResults=false;rec.lang=navigator.language||'en-US';
+ rec.onresult=e=>{let s='';for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal)s+=e.results[i][0].transcript+' ';const b=$('#b');b.value+=(b.value&&!b.value.endsWith('\n')?' ':'')+s;chg()};
+ rec.onerror=e=>{alert(e.error=='not-allowed'?'Please allow the microphone 🎤':'Voice error: '+e.error)};
+ rec.onend=()=>{rec=null;const m=$('#mic');if(m){m.textContent='🎤';m.classList.remove('rec')}};
+ rec.start();$('#mic').textContent='⏺ Listening... (tap to stop)';$('#mic').classList.add('rec')}
+async function share(){const edit=confirm('Share link: OK = can EDIT, Cancel = VIEW only');
+ const{data,error}=await sb.from('note_links').insert({note_id:cur,can_edit:edit}).select().single();if(error)return alert(error.message);
+ const link=location.origin+location.pathname+'?join='+data.token;
+ try{await navigator.clipboard.writeText(link);alert('Link copied 💜\n'+link)}catch(e){prompt('Copy this link:',link)}}
+boot();
+</script></body></html>
